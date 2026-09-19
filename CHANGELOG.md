@@ -1,12 +1,33 @@
 # Changelog
 
-## [Unreleased]
+## [v1.4.0] – 2026-09-19
+
+### New Features
+
+- **Signal strength sensor.** Every device gains a diagnostic **Signal strength** sensor reporting the advertisement RSSI in dBm, read live from Home Assistant's Bluetooth registry rather than from a BLE poll. It therefore stays meaningful between polls and while the brush is asleep, and works with both a local adapter and an ESPHome proxy. A `by_scanner` attribute lists the RSSI seen by each proxy, which is useful when deciding where to place one. Thanks to @PPP01.
+- **Three more model IDs recognised:** `OCLEANY3X` (Oclean X Pro Elite, issue #110), `OCLEANV20` (Oclean X Ultra 20, issue #134) and `OCLEANY2` (Oclean SE, issue #141). These already polled via the Type-1 fallback; mapping them explicitly removes the "unrecognised model" warning and enables the brush-scheme select. For `OCLEANY2` the mapping is APK-confirmed (handler `C3391z0` uses exactly the Type-1 characteristics). Note that an `OCLEANY2` with firmware older than 1.0.0.4 would need a different command (`0306` instead of `0307`) and is not supported — no such device has been reported.
+
+### Fixes
+
+- **Duration now reports the time you actually brushed (issues #111, #137).** The sensor previously showed the *scheduled programme length*, so aborting a 3:00 programme after 31 seconds still displayed 3:00 — and Duration Rating consequently claimed 100 % for a 31-second brush. Session records carry two duration fields; the integration now reads the real one. The scheduled length is kept as a `scheduled_duration_s` attribute on the sensor, so a dashboard can render "0:31 of 3:00". Affects the Oclean X, X Pro, X Pro Elite and X Pro Elite D families. Thanks to @PPP01 and @dsidoren-byte for the device captures that pinned this down.
+- **Statistics import will keep working on Home Assistant 2026.11 (issue #124).** The integration passed the deprecated `has_mean` flag when importing long-term statistics, which HA removes in 2026.11 — the whole session statistics import would have stopped there. It now passes `mean_type`, falling back to the old flag on older cores.
+- **No more blocking file I/O on the event loop (issue #124).** With debug logging enabled, writing `oclean_ble.log` happened inline on HA's event loop, and on log rotation also a close/open pair, which HA reported as a blocking call. All file writes now happen on a dedicated listener thread.
+- **Config entry no longer aborts when the brush is asleep (issue #116).** A spurious `CancelledError` leaked by the ESPHome BLE proxy on a connect timeout aborted setup with "config entry cancelled" instead of retrying. Genuine cancellation (HA shutdown, entry reload) still propagates. Thanks to @PPP01.
+- **Home Assistant no longer stalls at startup (issue #117).** The first poll was awaited during setup, blocking for up to a minute per sleeping brush and triggering HA's "still starting" warning. It now runs in the background; entities appear immediately and populate once the poll succeeds. Thanks to @PPP01.
+- **Update Now and the `oclean_ble.poll` service always poll.** Both were silently suppressed by the poll-window and post-brush cooldown gates, making on-demand troubleshooting impossible. Scheduled polls keep honouring those gates. Thanks to @PPP01.
+- **Button, switch, number and select actions can no longer hang (issue #121).** Write actions had no total timeout and no handling for the proxy-leaked cancellation, so pressing "Sync Time" on a sleeping brush could stall indefinitely or fail with a raw "Task cancelled". They now have a 45-second ceiling, a clean retryable error, a guaranteed disconnect, and are serialised so two entity actions cannot race for the brush's single GATT slot. Thanks to @PPP01.
+- **Parser no longer crashes on malformed JSON notifications.** A device or proxy sending valid JSON with a non-numeric value (e.g. `{"score": "err"}`) raised out of the notification handler and aborted the poll. Such fields are now skipped and the remaining valid fields are kept. Thanks to @PPP01.
 
 ### Changed
 
 - **The `oclean_ble.log` file is now opt-in.** Previously the integration always wrote `<config>/oclean_ble.log`, which collected brushing session times, scores and the device MAC into the config directory — and therefore into every Home Assistant backup — even for users who never asked for diagnostics. The file handler is now attached only while debug logging is enabled for the integration (⋮ → **Enable debug logging**, or a `logger:` entry in `configuration.yaml` followed by a reload). With debug disabled, no file is created; warnings and errors still appear in the main HA log as before. See "Debug Logging" in the README.
 
   **If you are reporting an issue and are asked for a log:** enable debug logging, reload the Oclean integration, reproduce the problem (e.g. brush), then attach `oclean_ble.log`.
+
+### Improvements
+
+- CI now verifies formatting (`ruff format --check`), not just linting, so formatting drift can no longer reach `main` unnoticed.
+- Dependency updates: ruff ≥ 0.16.7, mypy ≥ 2.3.1, pytest ≥ 9.1.1, `actions/checkout` v7, `actions/setup-python` v7.
 
 ---
 

@@ -62,7 +62,7 @@ Entity IDs follow the pattern `<platform>.<device_name>_<suffix>` where `<device
 | Battery | `_battery` | Current battery level | % | ✅ Tested |
 | Last Session | `_last_session` | Timestamp of the last brushing session | timestamp | ✅ Tested |
 | Score | `_score` | Brushing quality score of the last session (0–100) | – | ✅ Tested |
-| Duration | `_duration` | Duration of the last session | s (displayed as min) | ✅ Tested |
+| Duration | `_duration` | **Actual** brushing time of the last session (not the programme length). The scheduled programme length is exposed as the `scheduled_duration_s` attribute | s (displayed as min) | ✅ Tested |
 | Last Scheme | `_last_scheme` | Brushing programme used in the last session – human-readable name (e.g. "Clean", "Sensitive") from the pNum lookup table; falls back to the raw number if unknown | – | ✅ Tested |
 | Pressure | `_pressure` | Average brushing pressure across all tooth zones in the last session (raw ADC value 0–255) | – | ⚠️ Unconfirmed |
 | Coverage | `_coverage` | Percentage of tooth zones adequately cleaned in the last session (0–100 %). Uses the official Oclean app threshold: zones with raw pressure > 100 count as covered. | % | ✅ Tested |
@@ -90,6 +90,7 @@ Entity IDs follow the pattern `<platform>.<device_name>_<suffix>` where `<device
 | HW Revision | `_hw_revision` | Hardware revision string from BLE DIS (e.g. `Rev.D`) | – | ✅ Tested |
 | MAC Address | `_mac_address` | Bluetooth MAC address of the device | – | ✅ Tested |
 | Last Poll | `_last_poll` | Timestamp of the last completed BLE poll | timestamp | ✅ Tested |
+| Signal strength | `_signal_strength` | Advertisement RSSI, read from HA's Bluetooth registry rather than a BLE poll, so it stays available between polls and while the brush is asleep. The `by_scanner` attribute lists the RSSI seen by each adapter/proxy | dBm | ✅ Tested |
 
 ### Switches
 
